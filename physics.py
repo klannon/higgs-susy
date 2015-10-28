@@ -8,6 +8,7 @@ from pylearn2.utils import serial
 import os
 import numpy as np
 import pickle as pkl
+import csv
 
 class PHYSICS(dense_design_matrix.DenseDesignMatrix):
     def __init__(self, 
@@ -32,71 +33,99 @@ class PHYSICS(dense_design_matrix.DenseDesignMatrix):
         elif benchmark == 2:
             inputfile = '%s/SUSY.csv' % path
         
-        #X = pkl.load(open(inputfile, 'r'))
-        X = np.loadtxt(inputfile, dtype='f4', delimiter=',')
-        y = X[:,0].reshape((-1,1))
-        X = X[:,1:]
-        X = np.array(X, dtype='float32')
-        y = np.array(y, dtype='float32')
-        print 'Data loaded: benchmark%d.' % (benchmark)
+        # Need to allocate two arrays X (inputs) and y (targets)
+        # We know the size so let's allocate them from the outset instead
 
-        # Select a subset of examples.
+        # Define set of training, testing, and validation sets
         if benchmark == 1:
             # HIGGS
             ntrain = 10000000 
             nvalid = 500000 
             ntest  = 500000
-        elif bechmark == 2:
+        elif benchmark == 2:
             # SUSY
             ntrain = 4000000 
             nvalid = 500000 
             ntest  = 500000
-        if which_set == 'train':
-            X = X[0:ntrain, :]
-            y = y[0:ntrain, :]
-        elif which_set == 'valid':
-            X = X[ntrain:ntrain+nvalid, :]
-            y = y[ntrain:ntrain+nvalid, :]
-        elif which_set == 'test':
-            X = X[ntrain+nvalid:ntrain+nvalid+ntest, :]
-            y = y[ntrain+nvalid:ntrain+nvalid+ntest, :]
 
-        # Decide which feature set to use.
-        if benchmark == 1 and derived_feat == 'only':
-            # Only the 7 high level features.
-            X = X[:, 21:28]
-        elif benchmark == 1 and not derived_feat:
-            # Only the 21 raw features.
-            X = X[:, 0:21]
-        elif benchmark == 1 and derived_feat == 'regress':
-            # Predict high level features from low level.
-            y = X[:, 21:28]
-            X = X[:, 0:21]
-        elif benchmark == 2 and derived_feat == 'only':
-            # Only the 10 high-level features.
-            X = X[:, 8:18]
-        elif benchmark == 2 and not derived_feat:
-            # Only the 8 low-level features.
-            X = X[:, 0:8]
-        elif benchmark == 3 and derived_feat == 'only':
-            # Only the 15 high-level features.
-            X = X[:, 10:25]
-        elif benchmark == 3 and not derived_feat:
-            # Only the 10 raw features.
-            X = X[:, 0:10]
+
+        if which_set == 'train':
+            offset = 0
+            nrows = ntrain
+        elif which_set == 'valid':
+            offset = ntrain
+            nrows = nvalid
+        elif which_set == 'test':
+            offset = ntrain+nvalid
+            nrows = ntest
+
+        # Define the feature lists and relevant columns
+        if benchmark == 1:
+            if derived_feat == 'only':
+                xcolmin = 22
+                xcolmax = 29
+                ycolmin = 0
+                ycolmax = 1
+            elif not derived_feat:
+                xcolmin = 1
+                xcolmax = 22
+                ycolmin = 0
+                ycolmax = 1
+            else:
+                xcolmin = 1
+                xcolmax = 29
+                ycolmin = 0
+                ycolmax = 1
+        elif benchmark == 2:
+            if derived_feat == 'only':
+                xcolmin = 9
+                xcolmax = 19
+                ycolmin = 0
+                ycolmax = 1
+            if not derived_feat:
+                xcolmin = 1
+                xcolmax = 9
+                ycolmin = 0
+                ycolmax = 1
+            else:
+                xcolmin = 1
+                xcolmax = 19
+                ycolmin = 0
+                ycolmax = 1
+
+
+        # Limit number of samples
+        stop = min(stop,nrows)
+        X = np.empty([stop,xcolmax-xcolmin], dtype='float32')
+        y = np.empty([stop,ycolmax-ycolmin], dtype='float32')
 
         # Randomize data order.
+        indices = np.arange(X.shape[0])
         if seed:
             rng = np.random.RandomState(42)  # reproducible results with a fixed seed
-            indices = np.arange(X.shape[0])
             rng.shuffle(indices)
-            X = X[indices, :]
-            y = y[indices, :]
-   
-        # Limit number of samples.
-        stop = min(stop, X.shape[0])
-        X = X[start:stop, :]
-        y = y[start:stop, :]
+
+        # Finally, let's read in the data
+        reader = csv.reader(open(inputfile))
+        nskipped = 0
+        nread = 0
+        for row in reader:
+
+            # Possibly skip some events at the start
+            if nskipped < offset:
+                nskipped += 1
+                continue
+
+            # Stop when we get to the number we want
+            if nread >= stop:
+                break
+
+            # If we're here, it means we want to save this result
+            X[indices[nread]] = row[xcolmin:xcolmax]
+            y[indices[nread]] = row[ycolmin:ycolmax]
+            nread += 1
+
+        print 'Data loaded: benchmark {} ({})'.format(benchmark,which_set)
 
         # Initialize the superclass. DenseDesignMatrix
         super(PHYSICS,self).__init__(X=X, y=y)

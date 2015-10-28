@@ -60,7 +60,7 @@ def init_train():
     algorithm = pylearn2.training_algorithms.sgd.SGD(
                     batch_size=100,   # If changed, change learning rate!
                     learning_rate=.05, # In dropout paper=10 for gradient averaged over batch. Depends on batchsize.
-                    init_momentum=.9, 
+#                    init_momentum=.9, 
                     monitoring_dataset = {'train':dataset_train_monitor,
                                           'valid':dataset_valid,
                                           'test':dataset_test
