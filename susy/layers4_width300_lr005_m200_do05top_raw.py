@@ -87,19 +87,19 @@ def init_train():
                                         )
                 )
     # Extensions 
-    extensions=[ 
-        #pylearn2.train_extensions.best_params.MonitorBasedSaveBest(channel_name='train_y_misclass',save_path=save_path)
-        pylearn2.training_algorithms.sgd.MomentumAdjustor(
-            start=0,
-            saturate=momentum_saturate,
-            final_momentum=.99  # Dropout=.5->.99 over 500 epochs.
-            )
-        ]
+    # extensions=[ 
+    #     #pylearn2.train_extensions.best_params.MonitorBasedSaveBest(channel_name='train_y_misclass',save_path=save_path)
+    #     pylearn2.training_algorithms.sgd.MomentumAdjustor(
+    #         start=0,
+    #         saturate=momentum_saturate,
+    #         final_momentum=.99  # Dropout=.5->.99 over 500 epochs.
+    #         )
+    #     ]
     # Train
     train = pylearn2.train.Train(dataset=dataset_train,
                                  model=model,
                                  algorithm=algorithm,
-                                 extensions=extensions,
+                                 # extensions=extensions,
                                  save_path=save_path,
                                  save_freq=100)
     return train
@@ -111,7 +111,8 @@ def train(mytrain):
     print 'Using=%s' % theano.config.device # Can use gpus. 
     print 'Writing to %s' % logfile
     print 'Writing to %s' % mytrain.save_path
-    sys.stdout = open(logfile, 'w')        
+    sys.stdout = open(logfile, 'w')
+    print "opened log file"
     mytrain.main_loop()
 
 
